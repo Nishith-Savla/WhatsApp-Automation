@@ -91,6 +91,10 @@ def run(p_driver):
 option = webdriver.ChromeOptions()
 # You can add extensions to the browser by passing its path here
 option.add_extension("EXTENSION PATH, IF ANY")
+# Loading cache from user profile for decreasing frequency of scanning
+option.add_argument("--user-data-dir=C:/Users/nishi/AppData/Local/Google/Chrome/User\ Data/Default")
+option.add_argument("--profile-directory=Default")
+
 driver = webdriver.Chrome("CHROMEDRIVER PATH", options=option)
 if __name__ == "__main__":
     run(driver)
