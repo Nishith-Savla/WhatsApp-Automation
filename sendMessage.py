@@ -1,9 +1,11 @@
 from time import sleep  # for stopping the program for an interval
+from typing import List
 
 # for controlling the browser
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -11,7 +13,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 def check_login(p_driver) -> bool:
     """Returns True if the user has successfully logged in to WhatsApp, else False
     :return True or False
-
     """
     is_connected = input("Have you signed in WhatsApp web? (Yes/No): ")
     if is_connected.lower().startswith('yes'):
@@ -36,7 +37,8 @@ def send(p_driver, name, message, count=1):
             ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
         msg_box = p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')
         for i in range(count):
-            msg_box.send_keys(message)
+            for msg_line in message:
+                msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
     except Exception:
         print(name + " not found")
@@ -62,15 +64,15 @@ def run(p_driver):
             "Enter the names of people you want to send the message to (separated by ', ' if more than one): ")
         user_list = names.split(', ')
 
-    msg = ""
+    msg: List[str] = []
     choose_from_file = input("Do you want to choose the message from a file: ")
     if choose_from_file.lower().startswith("yes"):
         filepath = input("Enter the file path: ")
         with open(filepath, "r") as file:
             for line in file:
-                msg += line
+                msg.append(line.rstrip())
     elif choose_from_file.lower().startswith("no"):
-        msg = input("Enter the message to send: ")
+        msg = [input("Enter the message to send: ")]
 
     send_count = int(input("How many times do you want to send the message: "))
 
@@ -88,7 +90,7 @@ def run(p_driver):
 # Chrome options
 option = webdriver.ChromeOptions()
 # You can add extensions to the browser by passing its path here
-option.add_extension("EXTENSION PATH")
+option.add_extension("EXTENSION PATH, IF ANY")
 driver = webdriver.Chrome("CHROMEDRIVER PATH", options=option)
 if __name__ == "__main__":
     run(driver)
