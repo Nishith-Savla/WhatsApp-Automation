@@ -11,13 +11,12 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 def check_login(p_driver) -> bool:
-    """Returns True if the user has successfully logged in to WhatsApp, else False
-    :return True or False
-    """
+    """Returns True if the user has successfully logged in to WhatsApp, else False"""
     is_connected = input("Have you signed in WhatsApp web? (Yes/No): ")
     if is_connected.lower().startswith('yes'):
         # noinspection PyBroadException
         try:
+            # Check if any element (here profile pic) is present
             p_driver.find_element_by_xpath('//*[@id="side"]/header/div[1]/div/img')
             print("Login successful")
             return True
@@ -32,13 +31,17 @@ def check_login(p_driver) -> bool:
 def send(p_driver, name, message, count=1):
     """Sends the message to the user for 'count' number of times"""
     try:
+        # Enter the name of the user in the search bar
         p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]').send_keys(name)
+        # Wait until the name is loaded and click on it after
         WebDriverWait(p_driver, 20).until(
             ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
+        # Find the message box / text area
         msg_box = p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')
         for i in range(count):
-            for msg_line in message:
+            for msg_line in message:  # iterate over the list of lines of a message
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
+            # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
     except Exception:
         print(name + " not found")
@@ -47,13 +50,14 @@ def send(p_driver, name, message, count=1):
 
 
 def run(p_driver):
-    """Runs the whole program"""
+    """Runs the whole program by calling the send function"""
     p_driver.get("https://web.whatsapp.com/")
+    # Until login isn't successful, try checking and sleep for 2 seconds after every try
     while not check_login(p_driver):
         sleep(2)
-
+    # Taking the user names as input either from a file or from console
     choose_from_file = input("Do you want to choose the list of people from a file: ")
-    user_list = []
+    user_list: List[str] = []  # Empty list for storing names of receivers
     if choose_from_file.lower().startswith("yes"):
         filepath = input("Enter the file path: ")
         with open(filepath, "r") as file:
@@ -63,8 +67,8 @@ def run(p_driver):
         names = input(
             "Enter the names of people you want to send the message to (separated by ', ' if more than one): ")
         user_list = names.split(', ')
-
-    msg: List[str] = []
+    # Taking the message as input either from a file or from console
+    msg: List[str] = []  # Empty list for storing message lines
     choose_from_file = input("Do you want to choose the message from a file: ")
     if choose_from_file.lower().startswith("yes"):
         filepath = input("Enter the file path: ")
@@ -74,11 +78,18 @@ def run(p_driver):
     elif choose_from_file.lower().startswith("no"):
         msg = [input("Enter the message to send: ")]
 
-    send_count = int(input("How many times do you want to send the message: "))
-
+    while True:
+        try:
+            send_count = int(input("How many times do you want to send the message: "))
+            if send_count < 1:
+                raise Exception
+            break
+        except Exception:
+            print("Please enter a positive integer ")
+    # Send message to each user in the list
     for user in user_list:
         send(p_driver, user.lstrip().rstrip(), msg, send_count)
-
+    # Check if the user wants to quit the program
     wanna_quit = input("Do you want to logout (NOTE: This may stop sending any unsent "
                        "messages): ")
     if wanna_quit.lower().startswith("yes"):
@@ -90,12 +101,16 @@ def run(p_driver):
 # Chrome options
 option = webdriver.ChromeOptions()
 # You can add extensions to the browser by passing its path here
-option.add_extension("EXTENSION PATH, IF ANY")
-# Loading cache from user profile for decreasing frequency of scanning 
-# for windows
-option.add_argument("--user-data-dir=C:/Users/<user name>/AppData/Local/Google/Chrome/User\ Data/Default")
+option.add_extension("D:/Extensions/extension_4_9_16_0.crx")
+# Loading cache from user profile for decreasing frequency of scanning
+# For windows
+option.add_argument(  # Here you can replace the user name('nishi') with yours
+    "--user-data-dir=C:/Users/nishi/AppData/Local/Google/Chrome/User\ Data/Default")
 option.add_argument("--profile-directory=Default")
 
-driver = webdriver.Chrome("CHROMEDRIVER PATH", options=option)
-if __name__ == "__main__":
+# Initializing driver variable for scope resolution
+driver = None
+if __name__ == '__main__':
+    # Here you can replace the path with your chromedriver path
+    driver = webdriver.Chrome("C:/Users/nishi/chromedriver.exe", options=option)
     run(driver)
