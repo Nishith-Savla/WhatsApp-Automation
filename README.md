@@ -19,10 +19,10 @@ OR
 
 > $ pip install selenium
 
- ### Chromedriver installation:
- You can download the chromedriver as per your browser version from [Chromedriver website here]("http://chromedriver.chromium.org/downloads")
+### Chromedriver installation:
+You can download the chromedriver as per your browser version from [Chromedriver website here]("https://chromedriver.chromium.org/downloads")
  
- ---
+---
  
  ## Feature: 
 QR CODE Scanning: I have added a Cookie system that will save your session so that whatsapp don't think you are login for first time. By Saving Session data you will have to scan QR Code to Login only once for the session until you don't logout from the WhatsApp Web.
@@ -35,5 +35,5 @@ Please enter the **name of the chat as it shows up on the whatsapp web** and als
 ## About the creator:
 
 ---
-#### <a href="https://www.linkedin.com/in/nishith-savla-8b0b851b0/" title="My linkedin handle"> Nishith Savla </a> 
+#### [Nishith Savla]("https://www.linkedin.com/in/nishith-savla-8b0b851b0/" "My LinkedIn Handle")
 Feel free to mail me at my email address [nishithsavla005@gmail.com](mailto:nishithsavla005@gmail.com) for any queries.
