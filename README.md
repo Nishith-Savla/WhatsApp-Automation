@@ -20,7 +20,7 @@ OR
 > $ pip install selenium
 
 ### Chromedriver installation:
-You can download the chromedriver as per your browser version from [Chromedriver website here]("https://chromedriver.chromium.org/downloads")
+You can download the chromedriver as per your browser version from [Chromedriver website here](https://chromedriver.chromium.org/downloads)
  
 ---
  
@@ -35,5 +35,5 @@ Please enter the **name of the chat as it shows up on the whatsapp web** and als
 ## About the creator:
 
 ---
-#### [Nishith Savla]("https://www.linkedin.com/in/nishith-savla-8b0b851b0/" "My LinkedIn Handle")
+#### [Nishith Savla](https://www.linkedin.com/in/nishith-savla-8b0b851b0/ "My LinkedIn Handle")
 Feel free to mail me at my email address [nishithsavla005@gmail.com](mailto:nishithsavla005@gmail.com) for any queries.
