@@ -20,8 +20,8 @@ OR
 > $ pip install selenium
 
 ### Chromedriver installation:
-You can download the chromedriver as per your browser version from [Chromedriver website here](https://chromedriver.chromium.org/downloads)
- 
+You can download the chromedriver as per your browser version from [Chromedriver website here](https://chromedriver.chromium.org/downloads "Download chromedriver")
+To find a chromedriver version compatible with your Chrome browser go to either [chrome://version](chrome://version) or [Chrome settings page](chrome://settings/help "Go to settings")
 ---
  
  ## Feature: 
