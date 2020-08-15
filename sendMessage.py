@@ -1,4 +1,5 @@
 from time import sleep  # for stopping the program for an interval
+from traceback import print_exc
 from typing import List
 
 # for controlling the browser
@@ -10,6 +11,11 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 
+def draw_line(count=100):
+    """Draw a horizontal line of - count times"""
+    print("-" * count)
+
+
 def check_login(p_driver) -> bool:
     """Returns True if the user has successfully logged in to WhatsApp, else False"""
     is_connected = input("Have you signed in WhatsApp web? (Yes/No): ")
@@ -19,10 +25,12 @@ def check_login(p_driver) -> bool:
             # Check if any element (here profile pic) is present
             p_driver.find_element_by_xpath('//*[@id="side"]/header/div[1]/div/img')
             print("Login successful")
+            draw_line()
             return True
         except NoSuchElementException:
             print("It doesn't seem you have logged in")
             print('Try logging in again')
+            draw_line()
             return False
     else:
         return False
@@ -43,8 +51,10 @@ def send(p_driver, name, message, count=1):
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
             # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
-    except Exception:
+    except NoSuchElementException:
         print(name + " not found")
+    except Exception as e:
+        print_exc()
     finally:
         p_driver.implicitly_wait(5)
 
@@ -67,6 +77,7 @@ def run(p_driver):
         names = input(
             "Enter the names of people you want to send the message to (separated by ', ' if more than one): ")
         user_list = names.split(', ')
+    draw_line()
     # Taking the message as input either from a file or from console
     msg: List[str] = []  # Empty list for storing message lines
     choose_from_file = input("Do you want to choose the message from a file: ")
@@ -77,6 +88,7 @@ def run(p_driver):
                 msg.append(line.rstrip())
     elif choose_from_file.lower().startswith("no"):
         msg = [input("Enter the message to send: ")]
+    draw_line()
 
     while True:
         try:
@@ -86,15 +98,23 @@ def run(p_driver):
             break
         except Exception:
             print("Please enter a positive integer ")
+
+    draw_line()
+
     # Send message to each user in the list
     for user in user_list:
-        send(p_driver, user.lstrip().rstrip(), msg, send_count)
+        send(p_driver, user.strip(), msg, send_count)
     # Check if the user wants to quit the program
-    wanna_quit = input("Do you want to logout (NOTE: This may stop sending any unsent "
-                       "messages): ")
+    wanna_quit = input("Do you want to exit the program(Yes/No): ")
     if wanna_quit.lower().startswith("yes"):
-        p_driver.find_element_by_xpath('//*[@id="side"]/header/div[2]/div/span/div[3]/div').click()
-        p_driver.find_element_by_xpath('//*[@id="side"]/header/div[2]/div/span/div[3]/span/div/ul/li[7]/div').click()
+        wanna_quit = input("Do you want to logout (Yes to logout /No to just quit the program)\n"
+                           "[NOTE: This may stop sending any unsent messages and you'll have to scan the QR code "
+                           "while logging next time]:")
+        if wanna_quit.lower().startswith("yes"):
+            p_driver.find_element_by_xpath('//*[@id="side"]/header/div[2]/div/span/div[3]/div').click()
+            p_driver.find_element_by_xpath(
+                '//*[@id="side"]/header/div[2]/div/span/div[3]/span/div/ul/li[7]/div').click()
+
         p_driver.quit()
 
 
