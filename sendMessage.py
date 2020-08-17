@@ -5,7 +5,7 @@ from typing import List
 
 # for controlling the browser
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
@@ -32,39 +32,36 @@ def check_login(p_driver) -> bool:
             print("It doesn't seem you have logged in")
             print('Try logging in again')
             draw_line()
-            return False
+    return False
+
+
+def choose_from_file_input(input_elem):
+    if input_elem not in ('username', 'message'):
+        raise Exception('Parameter (input_elem) should be either username or message! Rather", input_elem, "found')
+    elem_to_choose = 'list of people' if input_elem.lower() == 'username' else 'message'
+    choose_from_file = input("Do you want to choose the " + elem_to_choose + " from a file: ")
+    elements: List[str] = []  # Empty list for storing the elements
+
+    if choose_from_file.lower().startswith("yes"):
+        filepath = input("Enter the file path: ")
+        with open(filepath, "r", encoding='utf-8') as file:
+            for line in file:
+                elements.append(line)
     else:
-        return False
+        elements = input("Enter the names of people you want to send the message to "
+                         "(separated by ', ' if more than one): "
+                         ).split() if elem_to_choose == 'username' else [input("Enter the message to send: ")]
+
+    return elements
 
 
 def take_input():
-    # Taking the user names as input either from a file or from console
-    choose_from_file = input("Do you want to choose the list of people from a file: ")
-    user_list: List[str] = []  # Empty list for storing names of receivers
-
-    if choose_from_file.lower().startswith("yes"):
-        filepath = input("Enter the file path: ")
-        with open(filepath, "r", encoding='utf-8') as file:
-            for line in file:
-                user_list.append(line)
-    else:
-        names = input(
-            "Enter the names of people you want to send the message to (separated by ', ' if more than one): ")
-        user_list = names.split(', ')
-
+    # Taking the user names as input either from a file or from console by calling choose_from_file_input()
+    user_list = choose_from_file_input('username')
     draw_line()
 
-    # Taking the message as input either from a file or from console
-    msg: List[str] = []  # Empty list for storing message lines
-    choose_from_file = input("Do you want to choose the message from a file: ")
-
-    if choose_from_file.lower().startswith("yes"):
-        filepath = input("Enter the file path: ")
-        with open(filepath, "r", encoding='utf-8') as file:
-            for line in file:
-                msg.append(line.rstrip())
-    else:
-        msg = [input("Enter the message to send: ")]
+    # Taking the message as input either from a file or from console by calling choose_from_file_input()
+    msg = choose_from_file_input('message')
     draw_line()
 
     # Unless a valid count isn't given
@@ -72,11 +69,10 @@ def take_input():
         try:
             send_count = int(input("How many times do you want to send the message: "))
             if send_count < 1:
-                raise Exception
+                raise ValueError
             break
-        except Exception:
+        except ValueError:
             print("Please enter a positive integer ")
-
     draw_line()
 
     return user_list, msg, send_count
@@ -86,20 +82,26 @@ def send(p_driver, name, message, count=1):
     """Sends the message to the user for 'count' number of times"""
     try:
         # Script to execute for sending emojis
-        js_add_text_to_input: str = '''
+        js_add_text_to_input = """
           var elm = arguments[0], txt = arguments[1];
           elm.value += txt;
           elm.dispatchEvent(new Event('change'));
-          '''
+          """
         # Enter the name of the user in the search bar
         search_bar = p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]')
 
         # To send emojis to the search bar which chromedriver doesn't support
-        p_driver.execute_script(js_add_text_to_input, search_bar, name)
+        try:
+            p_driver.execute_script(js_add_text_to_input, search_bar, name)
+            # Wait until the name is loaded and click on it after
+            WebDriverWait(p_driver, 10).until(
+                ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
 
-        # Wait until the name is loaded and click on it after
-        WebDriverWait(p_driver, 20).until(
-            ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
+        except TimeoutException:
+            search_bar.send_keys(message)
+            # Wait until the name is loaded and click on it after
+            WebDriverWait(p_driver, 10).until(
+                ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
 
         # Find the message box / text area
         msg_box = p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')
@@ -108,6 +110,7 @@ def send(p_driver, name, message, count=1):
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
             # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
+
     except NoSuchElementException:
         print(name + " not found")
     except Exception:
@@ -125,7 +128,6 @@ def run(p_driver=None):
         match = pattern.match(chromedriver_path)
         if match is not None:
             chromedriver_path = match.group().replace('\\', '/')
-        print(chromedriver_path)
         p_driver = webdriver.Chrome(chromedriver_path)
     """Runs the whole program by calling the send function"""
     p_driver.get("https://web.whatsapp.com/")
