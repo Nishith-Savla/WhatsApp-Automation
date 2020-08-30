@@ -5,11 +5,13 @@ from typing import List
 
 # for controlling the browser
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
+
+from conf import CHROMEDRIVER_PATH, CHROME_USER_DIR, EXTENSION_PATH
 
 
 def draw_line(count=100):
@@ -23,7 +25,7 @@ def check_login(p_driver) -> bool:
     if is_connected.lower().startswith('yes'):
         # noinspection PyBroadException
         try:
-            # Check if any element (here profile pic) is present
+            # Check if any element (here, profile pic) is present
             p_driver.find_element_by_xpath('//*[@id="side"]/header/div[1]/div/img')
             print("Login successful")
             draw_line()
@@ -37,7 +39,7 @@ def check_login(p_driver) -> bool:
 
 def choose_from_file_input(input_elem):
     if input_elem not in ('username', 'message'):
-        raise Exception('Parameter (input_elem) should be either username or message! Rather", input_elem, "found')
+        raise Exception(f'Parameter (input_elem) should be either username or message! Rather {input_elem} was found')
     elem_to_choose = 'list of people' if input_elem.lower() == 'username' else 'message'
     choose_from_file = input("Do you want to choose the " + elem_to_choose + " from a file: ")
     elements: List[str] = []  # Empty list for storing the elements
@@ -50,7 +52,7 @@ def choose_from_file_input(input_elem):
     else:
         elements = input("Enter the names of people you want to send the message to "
                          "(separated by ', ' if more than one): "
-                         ).split() if elem_to_choose == 'username' else [input("Enter the message to send: ")]
+                         ).split(', ') if input_elem == 'username' else [input("Enter the message to send: ")]
 
     return elements
 
@@ -81,31 +83,15 @@ def take_input():
 def send(p_driver, name, message, count=1):
     """Sends the message to the user for 'count' number of times"""
     try:
-        # Script to execute for sending emojis
-        js_add_text_to_input = """
-          var elm = arguments[0], txt = arguments[1];
-          elm.value += txt;
-          elm.dispatchEvent(new Event('change'));
-          """
         # Enter the name of the user in the search bar
-        search_bar = p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]')
-
-        # To send emojis to the search bar which chromedriver doesn't support
-        try:
-            p_driver.execute_script(js_add_text_to_input, search_bar, name)
-            # Wait until the name is loaded and click on it after
-            WebDriverWait(p_driver, 10).until(
-                ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
-
-        except TimeoutException:
-            search_bar.send_keys(message)
-            # Wait until the name is loaded and click on it after
-            WebDriverWait(p_driver, 10).until(
-                ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
+        p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]').send_keys(name)
+        # Wait until the name is loaded and click on it after
+        WebDriverWait(p_driver, 10).until(
+            ec.presence_of_element_located((By.XPATH, '//span[@title = "{}"]'.format(name)))).click()
 
         # Find the message box / text area
         msg_box = p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')
-        for i in range(count):
+        for _ in range(count):
             for msg_line in message:  # iterate over the list of lines of a message
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
             # Click on the send button (alternatively you can also pass the enter key to the message box)
@@ -120,6 +106,7 @@ def send(p_driver, name, message, count=1):
 
 
 def run(p_driver=None):
+    """Runs the whole program by calling the send function"""
     if p_driver is None:
         chromedriver_path = input("Enter your chrome driver path: ")
         pattern = re.compile(r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\];]:?)[\\]?"
@@ -129,9 +116,8 @@ def run(p_driver=None):
         if match is not None:
             chromedriver_path = match.group().replace('\\', '/')
         p_driver = webdriver.Chrome(chromedriver_path)
-    """Runs the whole program by calling the send function"""
-    p_driver.get("https://web.whatsapp.com/")
 
+    p_driver.get("https://web.whatsapp.com/")
     # Until login isn't successful, try checking and sleep for 2 seconds after every try
     while not check_login(p_driver):
         sleep(2)
@@ -156,18 +142,20 @@ driver = None
 
 if __name__ == '__main__':
     # Chrome options
-    option = webdriver.ChromeOptions()
+    options = webdriver.ChromeOptions()
     # You can add extensions to the browser by passing its path here
-    option.add_extension("D:/Extensions/extension_4_9_16_0.crx")
+    options.add_extension(EXTENSION_PATH)
     # Loading cache from user profile for decreasing frequency of scanning
     # For windows
     try:
-        option.add_argument(  # Here you can replace the user name('nishi') with yours
-            "--user-data-dir=C:/Users/nishi/AppData/Local/Google/Chrome/User\ Data/Default")
-        option.add_argument("--profile-directory=Default")
+        options.add_argument(f"user-data-dir={CHROME_USER_DIR}")
+        options.add_argument("profile-directory=Default")
+        driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
     except Exception:
         print("Couldn't load profile perhaps because another instance in running which is using the profile")
+        options = webdriver.ChromeOptions()
+        options.add_extension(EXTENSION_PATH)
+        driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
 
     # Here you can replace the path with your chromedriver path
-    driver = webdriver.Chrome("C:/Users/nishi/chromedriver.exe", options=option)
     run(driver)
