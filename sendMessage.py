@@ -48,7 +48,7 @@ def choose_from_file_input(input_elem):
         filepath = input("Enter the file path: ")
         with open(filepath, "r", encoding='utf-8') as file:
             for line in file:
-                elements.append(line)
+                elements.append(line.strip())
     else:
         elements = input("Enter the names of people you want to send the message to "
                          "(separated by ', ' if more than one): "
@@ -94,6 +94,7 @@ def send(p_driver, name, message, count=1):
         for _ in range(count):
             for msg_line in message:  # iterate over the list of lines of a message
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
+            sleep(1)
             # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
 
