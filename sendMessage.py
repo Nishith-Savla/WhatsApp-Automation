@@ -5,7 +5,7 @@ from typing import List
 
 # for controlling the browser
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
@@ -57,6 +57,26 @@ def choose_from_file_input(input_elem):
     return elements
 
 
+def connect(p_driver=None, options=None, chromedriver_path=None):
+    """Connects to whatsapp"""
+    if chromedriver_path is None:
+        chromedriver_path = input("Enter your chrome driver path: ")
+    if p_driver is None:
+        # chromedriver_path = input("Enter your chrome driver path: ")
+        pattern = re.compile(r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\];]:?)[\\]?"
+                             r"([a-zA-Z0-9',.!@#$%^&()_+\-={}\[\];]+)[\\]?"
+                             r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\]\\;]*)")
+        match = pattern.match(chromedriver_path)
+        if match is not None:
+            chromedriver_path = match.group().replace('\\', '/')
+        p_driver = webdriver.Chrome(chromedriver_path, options=options)
+    p_driver.get("https://web.whatsapp.com/")
+    # Until login isn't successful, try checking and sleep for 2 seconds after every try
+    while not check_login(p_driver):
+        sleep(2)
+    return p_driver
+
+
 def take_input():
     # Taking the user names as input either from a file or from console by calling choose_from_file_input()
     user_list = choose_from_file_input('username')
@@ -80,8 +100,10 @@ def take_input():
     return user_list, msg, send_count
 
 
-def send(p_driver, name, message, count=1):
+def send(name, message, p_driver=None, count=1):
     """Sends the message to the user for 'count' number of times"""
+    if p_driver is None:
+        p_driver = webdriver.Chrome(CHROMEDRIVER_PATH)
     try:
         # Enter the name of the user in the search bar
         p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]').send_keys(name)
@@ -108,27 +130,14 @@ def send(p_driver, name, message, count=1):
 
 def run(p_driver=None):
     """Runs the whole program by calling the send function"""
-    if p_driver is None:
-        chromedriver_path = input("Enter your chrome driver path: ")
-        pattern = re.compile(r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\];]:?)[\\]?"
-                             r"([a-zA-Z0-9',.!@#$%^&()_+\-={}\[\];]+)[\\]?"
-                             r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\]\\;]*)")
-        match = pattern.match(chromedriver_path)
-        if match is not None:
-            chromedriver_path = match.group().replace('\\', '/')
-        p_driver = webdriver.Chrome(chromedriver_path)
-
-    p_driver.get("https://web.whatsapp.com/")
-    # Until login isn't successful, try checking and sleep for 2 seconds after every try
-    while not check_login(p_driver):
-        sleep(2)
+    p_driver = connect(p_driver)
 
     # Take all the inputs necessary for the send function
     user_list, msg, send_count = take_input()
 
     # Send message to each user in the list
     for user in user_list:
-        send(p_driver, user.strip(), msg, send_count)
+        send(user.strip(), msg, p_driver, send_count)
 
     # Check if the user wants to logout from WhatsApp Web
     wanna_quit = input("Do you want to logout (NOTE: This may stop sending any unsent "
@@ -152,7 +161,7 @@ if __name__ == '__main__':
         options.add_argument(f"user-data-dir={CHROME_USER_DIR}")
         options.add_argument("profile-directory=Default")
         driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
-    except Exception:
+    except InvalidArgumentException:
         print("Couldn't load profile perhaps because another instance in running which is using the profile")
         options = webdriver.ChromeOptions()
         options.add_extension(EXTENSION_PATH)
