@@ -1,3 +1,4 @@
+import os
 import re
 from time import sleep  # for stopping the program for an interval
 from traceback import print_exc
@@ -19,10 +20,10 @@ def draw_line(count=100):
     print("-" * count)
 
 
-def check_login(p_driver) -> bool:
+def _check_login(p_driver) -> bool:
     """Returns True if the user has successfully logged in to WhatsApp, else False"""
     is_connected = input("Have you signed in WhatsApp web? (Yes/No): ")
-    if is_connected.lower().startswith('yes'):
+    if is_connected.lower().lstrip().startswith('yes'):
         # noinspection PyBroadException
         try:
             # Check if any element (here, profile pic) is present
@@ -37,53 +38,60 @@ def check_login(p_driver) -> bool:
     return False
 
 
-def choose_from_file_input(input_elem):
-    if input_elem not in ('username', 'message'):
-        raise Exception(f'Parameter (input_elem) should be either username or message! Rather {input_elem} was found')
-    elem_to_choose = 'list of people' if input_elem.lower() == 'username' else 'message'
-    choose_from_file = input("Do you want to choose the " + elem_to_choose + " from a file: ")
+def _get_list_from_file(input_elem):
+    if input_elem not in ('user_list', 'message'):
+        raise Exception(f'Parameter (input_elem) should be either user_list or message! Rather {input_elem} was found')
+    elem_to_choose = 'list of people' if input_elem.lower() == 'user_list' else 'message'
+    choose_from_file = input("Do you want to choose the " + elem_to_choose + " from a file(Yes/No/Same as earlier): ")
     elements: List[str] = []  # Empty list for storing the elements
 
-    if choose_from_file.lower().startswith("yes"):
+    if choose_from_file.lower().lstrip().startswith('same'):
+        with open("temp_username_msg", "rb") as tempfile:
+            retrieved_dict = eval(tempfile.read().decode())
+            elements = retrieved_dict[input_elem]
+    elif choose_from_file.lower().lstrip().startswith('yes'):
         filepath = input("Enter the file path: ")
         with open(filepath, "r", encoding='utf-8') as file:
             for line in file:
                 elements.append(line.strip())
     else:
-        elements = input("Enter the names of people you want to send the message to "
-                         "(separated by ', ' if more than one): "
-                         ).split(', ') if input_elem == 'username' else [input("Enter the message to send: ")]
+        if input_elem == 'user_list':
+            elements = input("Enter the names of people you want to send the message to "
+                             "(separated by commas if more than one): "
+                             ).split(',')
+            elements = [element.strip() for element in elements]
+        else:
+            elements = [input("Enter the message to send: ")]
 
     return elements
 
 
-def connect(p_driver=None, options=None, chromedriver_path=None):
+def connect(p_driver=None, options=None, driver_path=None):
     """Connects to whatsapp"""
-    if chromedriver_path is None:
-        chromedriver_path = input("Enter your chrome driver path: ")
     if p_driver is None:
-        # chromedriver_path = input("Enter your chrome driver path: ")
+        if driver_path is None:
+            driver_path = input("Enter your driver path: ")
         pattern = re.compile(r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\];]:?)[\\]?"
                              r"([a-zA-Z0-9',.!@#$%^&()_+\-={}\[\];]+)[\\]?"
                              r"([a-zA-z0-9',.!@#$%^&()_+\-={}\[\]\\;]*)")
-        match = pattern.match(chromedriver_path)
+        match = pattern.match(driver_path)
         if match is not None:
-            chromedriver_path = match.group().replace('\\', '/')
-        p_driver = webdriver.Chrome(chromedriver_path, options=options)
+            driver_path = match.group().replace('\\', '/')
+        p_driver = webdriver.Chrome(driver_path, options=options)
     p_driver.get("https://web.whatsapp.com/")
     # Until login isn't successful, try checking and sleep for 2 seconds after every try
-    while not check_login(p_driver):
+    while not _check_login(p_driver):
         sleep(2)
     return p_driver
 
 
-def take_input():
+def _take_input():
     # Taking the user names as input either from a file or from console by calling choose_from_file_input()
-    user_list = choose_from_file_input('username')
+    user_list = _get_list_from_file('user_list')
     draw_line()
 
     # Taking the message as input either from a file or from console by calling choose_from_file_input()
-    msg = choose_from_file_input('message')
+    msg = _get_list_from_file('message')
     draw_line()
 
     # Unless a valid count isn't given
@@ -100,12 +108,21 @@ def take_input():
     return user_list, msg, send_count
 
 
+def gather_input():
+    user_list, message, send_count = _take_input()
+    dict_to_write = dict(user_list=user_list, message=message)
+    with open("temp_username_msg", "wb") as temp_file:
+        temp_file.write(str(dict_to_write).encode())
+    return user_list, message, send_count
+
+
 def send(name, message, p_driver=None, count=1):
     """Sends the message to the user for 'count' number of times"""
     if p_driver is None:
         p_driver = webdriver.Chrome(CHROMEDRIVER_PATH)
     try:
         # Enter the name of the user in the search bar
+        p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]').clear()
         p_driver.find_element_by_xpath('//*[@id="side"]/div[1]/div/label/div/div[2]').send_keys(name)
         # Wait until the name is loaded and click on it after
         WebDriverWait(p_driver, 10).until(
@@ -132,19 +149,32 @@ def run(p_driver=None):
     """Runs the whole program by calling the send function"""
     p_driver = connect(p_driver)
 
-    # Take all the inputs necessary for the send function
-    user_list, msg, send_count = take_input()
+    while True:
+        # Take all the inputs necessary for the send function
+        user_list, message, send_count = gather_input()
 
-    # Send message to each user in the list
-    for user in user_list:
-        send(user.strip(), msg, p_driver, send_count)
+        # Send message to each user in the list
+        for user in user_list:
+            send(user.strip(), message, p_driver, send_count)
 
-    # Check if the user wants to logout from WhatsApp Web
+        # Check if the user wants to logout from WhatsApp Web
+        wanna_rerun = input("Do you want to send more messages(Yes/No): ")
+        if wanna_rerun.lower().lstrip().startswith('no'):
+            break
+
     wanna_quit = input("Do you want to logout (NOTE: This may stop sending any unsent "
                        "messages): ")
-    if wanna_quit.lower().startswith("yes"):
+    if wanna_quit.lower().lstrip().startswith('yes'):
         p_driver.find_element_by_xpath('//*[@id="side"]/header/div[2]/div/span/div[3]/div').click()
         p_driver.find_element_by_xpath('//*[@id="side"]/header/div[2]/div/span/div[3]/span/div/ul/li[7]/div').click()
+
+    # Remove the temporary files
+    try:
+        os.remove("temp_username_msg")
+    except FileNotFoundError:
+        pass
+    except Exception:
+        print_exc()
 
 
 # Initializing driver variable for scope resolution
