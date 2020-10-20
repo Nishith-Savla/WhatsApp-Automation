@@ -1,3 +1,4 @@
+"""WhatsApp Message Sender API"""
 import os
 import re
 from time import sleep  # for stopping the program for an interval
@@ -164,12 +165,12 @@ def send(name, message, p_driver=None, count=1):
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
             if list(urls):
                 try:
-                    # Wait for 20 seconds until the link is loaded
+                    # Wait for 20 seconds until the url preview is loaded
                     WebDriverWait(p_driver, 20).until(
                         ec.presence_of_element_located((
                             By.XPATH, '//*[@id="main"]/footer/div[2]/div/div[5]/div[1]/div[1]/div')))
                 except TimeoutException:
-                    print("Couldn't load link preview")
+                    print("Couldn't load url preview")
             # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
 

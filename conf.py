@@ -1,0 +1,3 @@
+CHROMEDRIVER_PATH = "ADD YOUR CHROMEDRIVER PATH HERE"
+CHROME_USER_DIR = "ADD YOUR CHROME USER DIRECTORY PATH HERE" # this will look somewhat like this "C:/Users/<username>/AppData/Local/Google/Chrome/User Data/Default"
+EXTENSION_PATH = "ADD YOUR EXTENSION PATH HERE"
