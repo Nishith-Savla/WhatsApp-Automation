@@ -1,1 +1,3 @@
 selenium~=3.141.0
+validators~=0.18.1
+urlextract~=1.1.0

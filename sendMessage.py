@@ -2,22 +2,50 @@ import os
 import re
 from time import sleep  # for stopping the program for an interval
 from traceback import print_exc
-from typing import List
+from typing import List, Generator
 
+import validators
 # for controlling the browser
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
+from urlextract import URLExtract
 
 from conf import CHROMEDRIVER_PATH, CHROME_USER_DIR, EXTENSION_PATH
 
 
-def draw_line(count=100):
-    """Draw a horizontal line of - count times"""
+def draw_line(count: int = 100):
+    """Draw a horizontal line of - count times
+
+    Parameters
+    ----------
+    count
+    """
     print("-" * count)
+
+
+def extract_urls(text: List[str]) -> Generator:
+    """Extracts urls from the text and returns a generator of all valid urls
+
+    Parameters
+    ----------
+    text
+        The text to extract urls from
+
+    Yields
+    ------
+    url
+        Valid urls from the text
+    """
+    extractor = URLExtract()
+    for line in text:
+        urls = extractor.find_urls(line)
+        for url in urls:
+            if validators.url(url):
+                yield url
 
 
 def _check_login(p_driver) -> bool:
@@ -38,7 +66,7 @@ def _check_login(p_driver) -> bool:
     return False
 
 
-def _get_list_from_file(input_elem):
+def _get_list(input_elem):
     if input_elem not in ('user_list', 'message'):
         raise Exception(f'Parameter (input_elem) should be either user_list or message! Rather {input_elem} was found')
     elem_to_choose = 'list of people' if input_elem.lower() == 'user_list' else 'message'
@@ -87,11 +115,11 @@ def connect(p_driver=None, options=None, driver_path=None):
 
 def _take_input():
     # Taking the user names as input either from a file or from console by calling choose_from_file_input()
-    user_list = _get_list_from_file('user_list')
+    user_list = _get_list('user_list')
     draw_line()
 
     # Taking the message as input either from a file or from console by calling choose_from_file_input()
-    msg = _get_list_from_file('message')
+    msg = _get_list('message')
     draw_line()
 
     # Unless a valid count isn't given
@@ -130,10 +158,18 @@ def send(name, message, p_driver=None, count=1):
 
         # Find the message box / text area
         msg_box = p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')
+        urls = extract_urls(message)
         for _ in range(count):
             for msg_line in message:  # iterate over the list of lines of a message
                 msg_box.send_keys(msg_line + Keys.SHIFT + Keys.ENTER)
-            sleep(1)
+            if list(urls):
+                try:
+                    # Wait for 20 seconds until the link is loaded
+                    WebDriverWait(p_driver, 20).until(
+                        ec.presence_of_element_located((
+                            By.XPATH, '//*[@id="main"]/footer/div[2]/div/div[5]/div[1]/div[1]/div')))
+                except TimeoutException:
+                    print("Couldn't load link preview")
             # Click on the send button (alternatively you can also pass the enter key to the message box)
             p_driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
 
@@ -193,6 +229,7 @@ if __name__ == '__main__':
         driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
     except InvalidArgumentException:
         print("Couldn't load profile perhaps because another instance in running which is using the profile")
+        driver.quit()
         options = webdriver.ChromeOptions()
         options.add_extension(EXTENSION_PATH)
         driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
