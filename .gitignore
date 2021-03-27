@@ -1,2 +1,10 @@
-env/
+# Autogenered dirs
+whatsapp-venv/
 .idea/
+
+# Configuration files
+conf.py
+
+# Logs
+*.log
+

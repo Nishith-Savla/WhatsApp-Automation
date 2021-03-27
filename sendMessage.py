@@ -43,7 +43,7 @@ class WhatsappSender:
     # TODO decide whether to keep this static or not
     @staticmethod
     def __extract_urls(text: List[str]) -> Generator:
-        """Extracts urls from the text and returns a generator of all valid urls.
+        """Extract urls from the text and returns a generator of all valid urls.
 
         Parameters
         ----------
@@ -62,14 +62,14 @@ class WhatsappSender:
                 if validators.url(url):
                     yield url
 
-    def _check_login(self, p_driver) -> bool:
-        """Returns True if the user has successfully logged in to WhatsApp, else False"""
+    def _check_login(self) -> bool:
+        """Return True if the user has successfully logged in to WhatsApp."""
         is_connected = input("Have you signed in WhatsApp web? (Yes/No): ")
         if is_connected.lower().lstrip().startswith('yes'):
             # noinspection PyBroadException
             try:
                 # Check if any element (here, profile pic) is present
-                p_driver.find_element_by_xpath('//*[@id="side"]/header/div[1]/div/img')
+                self.driver.find_element_by_xpath('//*[@id="side"]/header/div[1]/div/img')
                 print("Login successful")
                 self.draw_line()
                 return True
@@ -80,6 +80,13 @@ class WhatsappSender:
         return False
 
     def __get_list(self, input_elem):
+        """Get the list i.e. {input_elem}s from the user or the file.
+
+        Parameters
+        ----------
+        input_elem : str
+            Should be 'user_list' / 'message'.
+        """
         assert input_elem in ('user_list', 'message'), \
             f'Parameter (input_elem) should be either user_list or message! Rather {input_elem} was found'
         elem_to_choose = 'list of people' if input_elem == 'user_list' else 'message'
@@ -109,9 +116,7 @@ class WhatsappSender:
                 self.message = [input("Enter the message to send: ")]
 
     def connect(self, options=None, driver_path=None):
-        """
-        Connects to whatsapp.
-        """
+        """Connect to whatsapp."""
         if not self.driver:
             if not driver_path:
                 driver_path = input("Enter your driver path: ")
@@ -123,19 +128,16 @@ class WhatsappSender:
                 driver_path = match.group().replace('\\', '/')
             self.driver = webdriver.Chrome(executable_path=driver_path, options=options)
         self.driver.get("https://web.whatsapp.com/")
-        # Until login isn't successful, try checking and sleep for 2 seconds after every try
-        while not self._check_login(self.driver):
+        # Try checking until login isn't successful and sleep for 2 seconds after every try
+        while not self._check_login():
             sleep(2)
 
     def get_input(self, force_take_input=False):
-        """
-        Taking the user names as input either from a file or from console by calling choose_from_file_input().
-        """
+        """Take the user names as input from file or from console by calling __get_list()."""
         if force_take_input or not self.user_list:
             self.__get_list('user_list')
             self.draw_line()
 
-        # Taking the message as input either from a file or from console by calling choose_from_file_input()
         if force_take_input or not self.message:
             self.__get_list('message')
             self.draw_line()
@@ -158,19 +160,13 @@ class WhatsappSender:
                 self.load_url_preview = True
 
     def send_message(self, name, message, count=1):
-        """Sends the message to the user for 'count' number of times."""
+        """Send the message to the user for 'count' number of times."""
         try:
             # Enter the name of the user in the search bar
             search_box = self.driver.find_element_by_xpath(
                 '//div[contains(text(), "Search")]/following-sibling::label//div[@contenteditable="true"]')
             search_box.clear()
             search_box.send_keys(name + Keys.ENTER)
-            # Wait until the name is loaded and click on it after
-            # try:
-            #     WebDriverWait(self.driver, 10).until(
-            #         ec.presence_of_element_located((By.XPATH, f'//span[text()="{name}"]'))).click()
-            # except ElementClickInterceptedException:
-            #     print("Can't click as chat is already open")
 
             # Find the message box / text area
             msg_box = self.driver.find_element_by_xpath(
@@ -190,7 +186,8 @@ class WhatsappSender:
                             ec.presence_of_element_located((By.XPATH, '//footer/div[2]/div//div[@title]')))
                     except TimeoutException:
                         print("Couldn't load url preview")
-                # Send the enter key to the message box (alternatively you can also Click on the send button)
+                # Send the enter key to the message box
+                # (alternatively you can also Click on the send button)
                 # self.driver.find_element_by_xpath('//*[@id="main"]/footer/div[1]/div[3]/button').click()
                 msg_box.send_keys(Keys.ENTER)
         except NoSuchElementException:
@@ -201,9 +198,7 @@ class WhatsappSender:
             self.driver.implicitly_wait(5)
 
     def run(self):
-        """
-        Runs the whole program by calling the send_message function
-        """
+        """Run the whole program by calling the send_message function."""
         while True:
             # Take all the necessary inputs
             self.get_input(self.force_take_input)
